@@ -1,0 +1,16 @@
+#Code block 1: Listing 8_8
+python facenet/src/align/align_dataset_mtcnn.py \
+    ~/presidents/ \
+   ~/presidents_aligned \
+    --image_size 182 \
+    --margin 44
+
+#Code block 2: Listing 8_9
+python facenet/src/classifier.py TRAIN \
+~/presidents_aligned \
+~/20180402-114759/20180402-114759.pb \
+~/presidents_aligned/face_classifier.pkl \
+--batch_size 1000 \
+--min_nrof_images_per_class 40 \
+--nrof_train_images_per_class 35 \
+--use_split_dataset

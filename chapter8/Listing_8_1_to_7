@@ -1,0 +1,135 @@
+#Code block 1: Listing 8_1
+%%shell
+git clone https://github.com/ansarisam/facenet.git
+
+#Code block 2: Listing 8_2
+import sys
+import getpass
+import requests
+
+VGG_FACE_URL = "http://zeus.robots.ox.ac.uk/vgg_face2/login/"
+IMAGE_URL = "http://zeus.robots.ox.ac.uk/vgg_face2/get_file?fname=vggface2_train.tar.gz"
+TEST_IMAGE_URL="http://zeus.robots.ox.ac.uk/vgg_face2/get_file?fname=vggface2_test.tar.gz"
+
+print('Please enter your VGG Face 2 credentials:')
+user_string = input('    User: ')
+password_string = getpass.getpass(prompt='    Password: ')
+
+credential = {
+    'username': user_string,
+    'password': password_string
+}
+
+session = requests.session()
+r = session.get(VGG_FACE_URL)
+
+if 'csrftoken' in session.cookies:
+    csrftoken = session.cookies['csrftoken']
+elif 'csrf' in session.cookies:
+    csrftoken = session.cookies['csrf']
+else:
+    raise ValueError("Unable to locate CSRF token.")
+
+credential['csrfmiddlewaretoken'] = csrftoken
+
+r = session.post(VGG_FACE_URL, data=credential)
+
+imagefiles = IMAGE_URL.split('=')[-1]
+
+with open(imagefiles, "wb") as files:
+    print(f"Downloading the file: `{imagefiles}`")
+    r = session.get(IMAGE_URL, data=credential, stream=True)
+    bytes_written = 0
+    for data in r.iter_content(chunk_size=400096):
+        files.write(data)
+        bytes_written += len(data)
+        MegaBytes = bytes_written / (1024 * 1024)
+        sys.stdout.write(f"\r{MegaBytes:0.2f} MiB downloaded...")
+        sys.stdout.flush()
+
+print("\n Images are successfully downloaded. Exiting the process.")
+
+#Code block 3: Listing 8_3
+%%shell
+tar xvzf vggface2_train.tar.gz
+tar xvzf vggface2_test.tar.gz
+
+#Code block 4: Listing 8_4
+%%shell
+export PYTHONPATH=$PYTHONPATH:/content/facenet
+export PYTHONPATH=$PYTHONPATH:/content/facenet/src
+for N in {1..10}; do \
+python /content/facenet/src/align/align_dataset_mtcnn.py \
+/content/drive/MyDrive/chapter8/train \
+/content/drive/MyDrive/chapter8/train_aligned \
+--image_size 182 \
+--margin 44 \
+--random_order \
+--gpu_memory_fraction 0.10 \
+& done
+
+#Code block 5: Listing 8_5
+import numpy as np
+import pandas as pd
+import cv2
+from mtcnn.mtcnn import MTCNN
+from matplotlib import pyplot as plt
+from keras.models import load_model
+from PIL import Image
+import os
+# extract a single face from a given photograph
+def extract_face(filename, required_size=(160, 160)):
+    # load image from file
+    image = Image.open(filename)
+    # convert to RGB, if needed
+    image = image.convert('RGB')
+    # convert to array
+    pixels = np.asarray(image)
+    # create the detector, using default weights
+    detector = MTCNN()
+    # detect faces in the image
+    results = detector.detect_faces(pixels)
+    # extract the bounding box from the first face
+    x1, y1, width, height = results[0]['box']
+    # deal with negative pixel index
+    x1, y1 = abs(x1), abs(y1)
+    x2, y2 = x1 + width, y1 + height
+    # extract the face
+    face = pixels[y1:y2, x1:x2]
+    # resize pixels to the model size
+    image = Image.fromarray(face)
+    image = image.resize(required_size)
+    face_array = np.asarray(image)
+    return face_array
+
+inputpath = "/content/drive/MyDrive/chapter8/train"
+outputpath = "/content/drive/MyDrive/chapter8/train_aligned"
+for dir in os.listdir(inputpath):
+  if os.path.isdir(os.path.join(inputpath, dir)):
+    os.makedirs(os.path.join(outputpath, dir))
+    for image in os.listdir(os.path.join(inputpath, dir)):
+      pixels = extract_face(os.path.join(inputpath, dir, image))
+      cv2.imwrite(os.path.join(outputpath, dir, image), pixels)
+  else:
+    print(dir, " is not a dir")
+
+#Code block 6: Listing 8_6
+!export PYTHONPATH=$PYTHONPATH:/content/facenet/src
+!python facenet/src/train_tripletloss.py \
+--logs_base_dir logs/facenet/ \
+--models_base_dir /content/drive/MyDrive/chapter8/facenet_model4/ \
+--data_dir /content/drive/MyDrive/chapter8/train_aligned/ \
+--image_size 160 \
+--model_def models.inception_resnet_v1 \
+--optimizer ADAGRAD \
+--learning_rate 0.01 \
+--weight_decay 1e-4 \
+--max_nrof_epochs 10 \
+--epoch_size 200 \
+--people_per_batch 45 \
+--images_per_person 20 \
+
+#Code block 7: Listing 8_7
+%tensorflow_version 2.x
+%load_ext tensorboard
+%tensorboard --logdir /content/logs/facenet

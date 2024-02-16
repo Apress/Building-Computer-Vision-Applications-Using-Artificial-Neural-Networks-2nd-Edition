@@ -1,0 +1,5 @@
+model_path = "/Users/home/Downloads/neu-det-models/final_model"
+labels_path = "/Users/home/Downloads/steel_label_map.pbtxt"
+image_dir = "/Users/home/Downloads/NEU-DET/test/IMAGES"
+image_file_pattern = "*.jpg"
+output_path="/Users/home/Downloads/surface_defects_out"

@@ -1,0 +1,17 @@
+1	import cv2
+2	import numpy as np
+3
+4	# Load an image
+5	image = cv2.imread("images/sudoku.jpg")
+6	image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+7
+8	image = cv2.bilateralFilter(image, 5, 50, 50)
+9	cv2.imshow("Blurred image", image)
+10
+11	# Laplace function for edge detection
+12	laplace = cv2.Laplacian(image,cv2.CV_64F)
+13	laplace = np.uint8(np.absolute(laplace))
+14
+15	cv2.imshow("Laplacian Edges", laplace)
+16
+17	cv2.waitKey(0)
